@@ -1,0 +1,76 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+  
+  body {
+    @apply bg-gray-50 text-gray-900 antialiased;
+    margin: 0;
+    min-width: 320px;
+    min-height: 100vh;
+  }
+
+  /* SVGアイコンのデフォルトスタイル調整 */
+  svg {
+    display: inline-block;
+    vertical-align: middle;
+    flex-shrink: 0;
+    width: auto !important;
+    height: auto !important;
+  }
+  
+  /* Tailwindのwidth/heightクラスを優先 */
+  .w-3 { width: 0.75rem !important; }
+  .w-4 { width: 1rem !important; }
+  .w-5 { width: 1.25rem !important; }
+  .w-6 { width: 1.5rem !important; }
+  .h-3 { height: 0.75rem !important; }
+  .h-4 { height: 1rem !important; }
+  .h-5 { height: 1.25rem !important; }
+  .h-6 { height: 1.5rem !important; }
+}
+
+@layer components {
+  /* SHIFT MASH カスタムコンポーネント */
+  .btn-primary {
+    @apply bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+  }
+  
+  .btn-secondary {
+    @apply bg-gray-200 hover:bg-gray-300 text-gray-900 font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+  }
+  
+  .btn-shortage {
+    @apply bg-red-500 hover:bg-red-600 text-white font-medium py-1.5 px-3 rounded-md transition-colors duration-200;
+  }
+  
+  .btn-surplus {
+    @apply bg-blue-500 hover:bg-blue-600 text-white font-medium py-1.5 px-3 rounded-md transition-colors duration-200;
+  }
+  
+  .shift-cell {
+    @apply relative bg-white rounded-lg border border-gray-200 p-4 min-h-[80px] shadow-sm;
+  }
+  
+  .shift-cell-shortage {
+    @apply border-red-200 bg-red-50;
+  }
+  
+  .shift-cell-surplus {
+    @apply border-blue-200 bg-blue-50;
+  }
+  
+  .modal-overlay {
+    @apply fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50;
+  }
+  
+  .modal-content {
+    @apply bg-white rounded-xl max-w-md w-full max-h-[80vh] overflow-hidden shadow-xl;
+  }
+}

@@ -1,0 +1,84 @@
+[
+  {
+    "id": "w1",
+    "name": "佐藤 太郎",
+    "storeId": "s1",
+    "roles": ["hall"],
+    "rating": 4.6,
+    "experience": 12,
+    "avatar": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=64&h=64&fit=crop&crop=face"
+  },
+  {
+    "id": "w1h1",
+    "name": "高橋 美咲",
+    "storeId": "s1",
+    "roles": ["hall"],
+    "rating": 4.4,
+    "experience": 8,
+    "avatar": "https://images.unsplash.com/photo-1494790108755-2616b612b5bb?w=64&h=64&fit=crop&crop=face"
+  },
+  {
+    "id": "w1h2",
+    "name": "松本 健介",
+    "storeId": "s1",
+    "roles": ["hall"],
+    "rating": 4.2,
+    "experience": 6,
+    "avatar": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=64&h=64&fit=crop&crop=face"
+  },
+  {
+    "id": "w1k1",
+    "name": "中村 由美",
+    "storeId": "s1",
+    "roles": ["kitchen"],
+    "rating": 4.7,
+    "experience": 15,
+    "avatar": "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=64&h=64&fit=crop&crop=face"
+  },
+  {
+    "id": "w1k2",
+    "name": "小林 直樹",
+    "storeId": "s1",
+    "roles": ["kitchen"],
+    "rating": 4.5,
+    "experience": 10,
+    "avatar": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=64&h=64&fit=crop&crop=face"
+  },
+
+  {
+    "id": "w2",
+    "name": "鈴木 花子",
+    "storeId": "s2",
+    "roles": ["kitchen"],
+    "rating": 4.3,
+    "experience": 8,
+    "avatar": "https://images.unsplash.com/photo-1494790108755-2616b612b5bb?w=64&h=64&fit=crop&crop=face"
+  },
+  {
+    "id": "w4",
+    "name": "山田 美咲",
+    "storeId": "s3",
+    "roles": ["hall"],
+    "rating": 4.2,
+    "experience": 6,
+    "avatar": "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=64&h=64&fit=crop&crop=face"
+  },
+  {
+    "id": "w5",
+    "name": "渡辺 健太",
+    "storeId": "s2",
+    "roles": ["kitchen"],
+    "rating": 4.5,
+    "experience": 15,
+    "avatar": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=64&h=64&fit=crop&crop=face"
+  },
+  {
+    "id": "w6",
+    "name": "伊藤 さくら",
+    "storeId": "s3",
+    "roles": ["hall", "kitchen"],
+    "rating": 4.7,
+    "experience": 18,
+    "avatar": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=64&h=64&fit=crop&crop=face"
+  }
+]

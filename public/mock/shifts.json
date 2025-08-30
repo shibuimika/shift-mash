@@ -1,0 +1,111 @@
+[
+  {
+    "id": "sh1s1h1",
+    "storeId": "s1",
+    "workerId": null,
+    "role": "hall",
+    "start": "09:00",
+    "end": "12:00",
+    "status": "shortage",
+    "date": "2024-08-31",
+    "supportWorkerId": null,
+    "notes": "佐藤 太郎が急な欠勤により人員不足"
+  },
+  {
+    "id": "sh1s1h2",
+    "storeId": "s1",
+    "workerId": "w1h1",
+    "role": "hall",
+    "start": "12:00",
+    "end": "18:00",
+    "status": "normal",
+    "date": "2024-08-31",
+    "supportWorkerId": null,
+    "notes": ""
+  },
+  {
+    "id": "sh1s1h3",
+    "storeId": "s1",
+    "workerId": "w1h2",
+    "role": "hall",
+    "start": "14:00",
+    "end": "20:00",
+    "status": "surplus",
+    "date": "2024-08-31",
+    "supportWorkerId": null,
+    "notes": "予想より来客数が少なく人員余剰"
+  },
+  {
+    "id": "sh1s1k1",
+    "storeId": "s1",
+    "workerId": "w1k1",
+    "role": "kitchen",
+    "start": "10:00",
+    "end": "16:00",
+    "status": "normal",
+    "date": "2024-08-31",
+    "supportWorkerId": null,
+    "notes": ""
+  },
+  {
+    "id": "sh1s1k2",
+    "storeId": "s1",
+    "workerId": null,
+    "role": "kitchen",
+    "start": "16:00",
+    "end": "20:00",
+    "status": "shortage",
+    "date": "2024-08-31",
+    "supportWorkerId": null,
+    "notes": "小林 直樹の体調不良により人員不足"
+  },
+
+  {
+    "id": "sh2",
+    "storeId": "s2",
+    "workerId": "w5",
+    "role": "kitchen",
+    "start": "14:00",
+    "end": "17:00",
+    "status": "surplus",
+    "date": "2024-08-31",
+    "supportWorkerId": null,
+    "notes": "予想より来客数が少ない"
+  },
+  {
+    "id": "sh4",
+    "storeId": "s3",
+    "workerId": "w4",
+    "role": "hall",
+    "start": "10:00",
+    "end": "16:00",
+    "status": "normal",
+    "date": "2024-08-31",
+    "supportWorkerId": null,
+    "notes": ""
+  },
+  {
+    "id": "sh5",
+    "storeId": "s2",
+    "workerId": "w2",
+    "role": "kitchen",
+    "start": "09:00",
+    "end": "14:00",
+    "status": "normal",
+    "date": "2024-08-31",
+    "supportWorkerId": null,
+    "notes": ""
+  },
+  {
+    "id": "sh6",
+    "storeId": "s3",
+    "workerId": null,
+    "role": "kitchen",
+    "start": "15:00",
+    "end": "19:00",
+    "status": "shortage",
+    "date": "2024-08-31",
+    "supportWorkerId": null,
+    "notes": "体調不良による欠勤"
+  }
+]

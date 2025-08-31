@@ -3,6 +3,8 @@ import type {
   Worker,
   Shift,
   Publishing,
+  Recruiting,
+  Available,
   Request,
   CreateRequestParams,
   ApiResponse,
@@ -76,7 +78,7 @@ class MockAPI {
   async getPublishings(): Promise<ApiResponse<Publishing>> {
     try {
       // まずlocalStorageから取得を試行
-      const localData = this.getLocalData<Publishing>('publishings', null);
+      const localData = this.getLocalData<Publishing | null>('publishings', null);
       if (localData) {
         console.log('📦 localStorageからpublishingsを取得:', localData);
         return { data: localData, success: true };

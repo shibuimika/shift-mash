@@ -410,7 +410,7 @@ export default function DayShiftPage() {
               const staffEntries = Object.entries(staffShifts);
               let roleHeaderShown = false;
               
-              return staffEntries.map(([workerId], staffIndex, staffArray) => {
+              return staffEntries.map(([workerId]) => {
                 let worker = workers.find(w => w.id === workerId);
                 const isFirstInRole = !roleHeaderShown;
                 if (isFirstInRole) roleHeaderShown = true;

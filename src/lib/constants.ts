@@ -69,13 +69,11 @@ export const API_CONFIG = {
 export const ROUTES = {
   DAY: '/day',
   INBOX: '/inbox',
-  OVERVIEW: '/overview',
 } as const;
 
 export const PAGE_TITLES: Record<string, string> = {
   [ROUTES.DAY]: '当日シフト',
   [ROUTES.INBOX]: '受信リクエスト',
-  [ROUTES.OVERVIEW]: 'サマリー',
 };
 
 // 時間設定

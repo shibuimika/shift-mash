@@ -3,7 +3,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Layout } from './components/Layout';
 import DayShiftPage from './pages/DayShiftPage';
 import InboxPage from './pages/InboxPage';
-import OverviewPage from './pages/OverviewPage';
 import { ToastProvider } from './components/ToastProvider';
 import { ROUTES } from './lib/constants';
 
@@ -28,7 +27,6 @@ function App() {
               <Route path="/" element={<Navigate to={ROUTES.DAY} replace />} />
               <Route path={ROUTES.DAY} element={<DayShiftPage />} />
               <Route path={ROUTES.INBOX} element={<InboxPage />} />
-              <Route path={ROUTES.OVERVIEW} element={<OverviewPage />} />
               <Route path="*" element={<Navigate to={ROUTES.DAY} replace />} />
             </Routes>
           </Layout>

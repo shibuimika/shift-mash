@@ -37,9 +37,9 @@
 }
 
 @layer components {
-  /* SHIFT MASH カスタムコンポーネント */
+  /* SHIFT MASH カスタムコンポーネント - リクルートブランドカラー */
   .btn-primary {
-    @apply bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+    @apply bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 shadow-sm;
   }
   
   .btn-secondary {
@@ -47,15 +47,15 @@
   }
   
   .btn-shortage {
-    @apply bg-red-500 hover:bg-red-600 text-white font-medium py-1.5 px-3 rounded-md transition-colors duration-200;
+    @apply bg-red-600 hover:bg-red-700 text-white font-medium py-1.5 px-3 rounded-lg transition-colors duration-200 shadow-sm;
   }
   
   .btn-surplus {
-    @apply bg-blue-500 hover:bg-blue-600 text-white font-medium py-1.5 px-3 rounded-md transition-colors duration-200;
+    @apply bg-blue-500 hover:bg-blue-600 text-white font-medium py-1.5 px-3 rounded-lg transition-colors duration-200 shadow-sm;
   }
   
   .shift-cell {
-    @apply relative bg-white rounded-lg border border-gray-200 p-4 min-h-[80px] shadow-sm;
+    @apply relative bg-white rounded-lg border border-gray-200 p-4 min-h-[80px] shadow-sm hover:shadow-md transition-shadow;
   }
   
   .shift-cell-shortage {

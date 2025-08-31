@@ -40,5 +40,19 @@
     "approvedAt": null,
     "message": "キッチンで応援可能です",
     "estimatedTravelTime": 15
+  },
+  {
+    "id": "req4",
+    "from": "s3",
+    "to": "s1",
+    "type": "recruiting",
+    "targetIds": ["w1h1"],
+    "shiftId": "sh6",
+    "targetShiftId": "sh1s1h1",
+    "status": "pending",
+    "createdAt": 1725098400000,
+    "approvedAt": null,
+    "message": "15:00-19:00のキッチンスタッフ急募です",
+    "estimatedTravelTime": 12
   }
 ]

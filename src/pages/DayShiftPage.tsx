@@ -1,16 +1,15 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api, queryKeys } from '@/lib/api';
-import { RequestModal } from '@/components/RequestModal';
-import { useToast } from '@/components/ToastProvider';
-import { useCandidates } from '@/hooks/useCandidates';
-import type { Shift, ModalData, Worker } from '@/lib/types';
+import { PublishConfirmModal } from '@/components/PublishConfirmModal';
+// import { useToast } from '@/components/ToastProvider';
+import type { Shift, Worker, RequestType } from '@/lib/types';
 import { formatDate, timeToMinutes } from '@/lib/utils';
 import { ROLE_LABELS } from '@/lib/constants';
 
 export default function DayShiftPage() {
-  const { showToast } = useToast();
-  const [modalData, setModalData] = useState<ModalData | null>(null);
+  // const { showToast } = useToast();
+  const [confirmModalData, setConfirmModalData] = useState<{ shift: Shift; type: RequestType } | null>(null);
   const [isMobile, setIsMobile] = useState(false);
 
   // レスポンシブ判定
@@ -25,7 +24,7 @@ export default function DayShiftPage() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
   
-  // 今日の日付（デモ用に固定）
+  // 今日の日付（デモ用にシフトデータがある日付を使用）
   const today = '2024-08-31';
   
   // 自店舗ID（デモ用に固定）
@@ -53,17 +52,6 @@ export default function DayShiftPage() {
 
   // 自店舗のシフトのみ表示
   const shifts = allShifts.filter(shift => shift.storeId === currentStoreId);
-  
-  // 候補検索フック
-  const { candidates: recruitingCandidates } = useCandidates(
-    modalData?.type === 'recruiting' ? modalData.shift : null,
-    'recruiting'
-  );
-
-  const { candidates: dispatchCandidates } = useCandidates(
-    modalData?.type === 'dispatch' ? modalData.shift : null,
-    'dispatch'
-  );
 
   // タイムライン設定の計算
   const timelineConfig = useMemo(() => {
@@ -132,32 +120,22 @@ export default function DayShiftPage() {
     return result;
   }, [shifts, workers, currentStoreId]);
 
-  const handleRequestSupport = async (shift: Shift) => {
-    try {
-      setModalData({
-        shift,
-        type: 'recruiting',
-        candidates: [], // 初期は空、useCandidatesで更新される
-      });
-    } catch (error) {
-      showToast('error', 'エラー', '候補の取得に失敗しました');
-    }
+  const handleRequestSupport = (shift: Shift) => {
+    setConfirmModalData({
+      shift,
+      type: 'recruiting',
+    });
   };
 
-  const handleOfferDispatch = async (shift: Shift) => {
-    try {
-      setModalData({
-        shift,
-        type: 'dispatch',
-        candidates: [], // 初期は空、useCandidatesで更新される
-      });
-    } catch (error) {
-      showToast('error', 'エラー', '募集の取得に失敗しました');
-    }
+  const handleOfferDispatch = (shift: Shift) => {
+    setConfirmModalData({
+      shift,
+      type: 'dispatch',
+    });
   };
 
   const closeModal = () => {
-    setModalData(null);
+    setConfirmModalData(null);
   };
 
   // シフトバーの位置とサイズを計算
@@ -283,35 +261,47 @@ export default function DayShiftPage() {
   return (
     <div className="space-y-6">
       {/* ヘッダー */}
-      <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
-        <h3 className="text-lg font-medium text-gray-900">
-          {currentStore?.name || '店舗'} - {formatDate(today)}
+      <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
+        <h3 className="text-xl font-bold text-gray-900 mb-2">
+          {currentStore?.name || '店舗'} - {formatDate(new Date().toISOString().split('T')[0])}
         </h3>
-        <p className="text-sm text-gray-600 mt-1">
+        <p className="text-sm text-gray-600">
           タイムライン表示 ({timelineConfig.startTime} - {timelineConfig.endTime})
         </p>
       </div>
 
       {/* ガントチャート */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-24 md:mb-6">
         {/* ヘッダー行（時間軸） */}
         <div className="grid grid-cols-[180px_1fr] sm:grid-cols-[200px_1fr] border-b border-gray-200">
           {/* 左固定ヘッダー */}
-          <div className="bg-gray-50 border-r border-gray-200 p-2">
+          <div className="bg-gray-50 border-r border-gray-200 p-2 sticky left-0 z-20">
             <div className="text-xs sm:text-sm font-medium text-gray-700">役割 / スタッフ名</div>
           </div>
           
           {/* 右側時間軸ヘッダー */}
-          <div className="bg-gray-50 overflow-x-auto">
+          <div className="bg-gray-50">
             <div 
-              className="relative h-10"
-              style={{ 
-                width: isMobile ? `${timelineConfig.totalWidth}px` : '100%',
-                minWidth: isMobile ? `${timelineConfig.totalWidth}px` : 'auto'
+              className="relative h-10 overflow-x-auto" 
+              id="timeline-header"
+              onScroll={(e) => {
+                // ヘッダーのスクロールを本体と同期
+                const target = e.target as HTMLElement;
+                const bodyElement = document.getElementById('timeline-body');
+                if (bodyElement) {
+                  bodyElement.scrollLeft = target.scrollLeft;
+                }
               }}
             >
-              {/* 時間目盛り（ヘッダーのみ） */}
-              {generateTimeMarkers(true)}
+              <div
+                style={{ 
+                  width: isMobile ? `${timelineConfig.totalWidth}px` : '100%',
+                  minWidth: isMobile ? `${timelineConfig.totalWidth}px` : 'auto'
+                }}
+              >
+                {/* 時間目盛り（ヘッダーのみ） */}
+                {generateTimeMarkers(true)}
+              </div>
             </div>
           </div>
         </div>
@@ -356,7 +346,18 @@ export default function DayShiftPage() {
           </div>
 
           {/* 右側タイムライン */}
-          <div className="overflow-x-auto">
+          <div 
+            className="overflow-x-auto"
+            id="timeline-body"
+            onScroll={(e) => {
+              // 本体のスクロールをヘッダーと同期
+              const target = e.target as HTMLElement;
+              const headerElement = document.getElementById('timeline-header');
+              if (headerElement) {
+                headerElement.scrollLeft = target.scrollLeft;
+              }
+            }}
+          >
             <div 
               className="relative"
               style={{ 
@@ -448,15 +449,13 @@ export default function DayShiftPage() {
         </div>
       </div>
 
-      {/* リクエストモーダル */}
-      {modalData && (
-        <RequestModal
+      {/* 公開確認モーダル */}
+      {confirmModalData && (
+        <PublishConfirmModal
           isOpen={true}
           onClose={closeModal}
-          modalData={{
-            ...modalData,
-            candidates: modalData.type === 'recruiting' ? recruitingCandidates : dispatchCandidates,
-          }}
+          shift={confirmModalData.shift}
+          type={confirmModalData.type}
         />
       )}
     </div>

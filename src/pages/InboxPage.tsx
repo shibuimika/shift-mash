@@ -5,6 +5,7 @@ import { api, queryKeys } from '@/lib/api';
 import { TelModal } from '@/components/TelModal';
 import { ROLE_LABELS } from '@/lib/constants';
 import type { Recruiting, Available } from '@/lib/types';
+import { ArrowPathIcon } from '@heroicons/react/24/outline';
 
 export default function InboxPage() {
   // const { showToast } = useToast();
@@ -28,7 +29,7 @@ export default function InboxPage() {
     queryFn: () => api.getWorkers(),
   });
 
-  const { data: publishingsResponse, isLoading: publishingsLoading } = useQuery({
+  const { data: publishingsResponse, isLoading: publishingsLoading, refetch: refetchPublishings } = useQuery({
     queryKey: queryKeys.publishings,
     queryFn: () => api.getPublishings(),
     refetchInterval: 3000, // 3秒ごとに自動更新
@@ -38,15 +39,55 @@ export default function InboxPage() {
   const workers = workersResponse?.data || [];
   const publishings = publishingsResponse?.data || { recruitings: [], availables: [] };
 
-  // 他店舗の募集情報（自分が応援する場合）- 非表示にしたものを除外
-  const otherStoreRecruitings = publishings.recruitings.filter(r => 
-    r.storeId !== currentStoreId && r.open && !hiddenRecruitings.has(r.id)
+  // 自店舗の公開した募集情報（他店舗からの応援リクエストを受信する場合）
+  const myStoreRecruitings = publishings.recruitings.filter(r => 
+    r.storeId === currentStoreId && r.open && !hiddenRecruitings.has(r.id)
   );
 
-  // 他店舗の派遣可能人材（自分が応援をお願いする場合）- 非表示にしたものを除外
-  const otherStoreAvailables = publishings.availables.filter(a => 
-    a.storeId !== currentStoreId && a.open && !hiddenAvailables.has(a.id)
+  // 自店舗の公開した募集IDのセットを作成
+  const myStoreRecruitingIds = new Set(myStoreRecruitings.map(r => r.id));
+
+  // 自店舗の公開した派遣可能情報
+  const myStoreAvailables = publishings.availables.filter(a => 
+    a.storeId === currentStoreId && a.open && !hiddenAvailables.has(a.id)
   );
+
+  // 自店舗の公開した派遣可能IDのセットを作成
+  const myStoreAvailableIds = new Set(myStoreAvailables.map(a => a.id));
+
+  // 他店舗の派遣可能人材（自分が応援をお願いする場合）- 自店舗の募集にマッチするもののみ
+  const otherStoreAvailables = publishings.availables.filter(a => 
+    a.storeId !== currentStoreId && 
+    a.open && 
+    !hiddenAvailables.has(a.id) &&
+    a.matchedFromRecruitingId && 
+    myStoreRecruitingIds.has(a.matchedFromRecruitingId)
+  );
+
+  // 他店舗の募集（自分が応援する場合）- 自店舗の派遣可能にマッチするもののみ
+  const otherStoreRecruitings = publishings.recruitings.filter(r => 
+    r.storeId !== currentStoreId && 
+    r.open && 
+    !hiddenRecruitings.has(r.id) &&
+    r.matchedFromAvailableId && 
+    myStoreAvailableIds.has(r.matchedFromAvailableId)
+  );
+
+  // デバッグ用ログ
+  console.log('=== InboxPage データ確認 ===');
+  console.log('InboxPage - 公開情報:', publishings);
+  console.log('InboxPage - 自店舗ID:', currentStoreId);
+  console.log('InboxPage - 全募集数:', publishings.recruitings.length);
+  console.log('InboxPage - 全派遣可能数:', publishings.availables.length);
+  console.log('InboxPage - 自店舗の募集:', myStoreRecruitings);
+  console.log('InboxPage - 自店舗の派遣可能:', myStoreAvailables);
+  console.log('InboxPage - 他店舗の派遣可能（マッチング）:', otherStoreAvailables);
+  console.log('InboxPage - 他店舗の募集（マッチング）:', otherStoreRecruitings);
+  console.log('InboxPage - 自店舗の募集数:', myStoreRecruitings.length);
+  console.log('InboxPage - 自店舗の派遣可能数:', myStoreAvailables.length);
+  console.log('InboxPage - 他店舗の派遣可能数（マッチング）:', otherStoreAvailables.length);
+  console.log('InboxPage - 他店舗の募集数（マッチング）:', otherStoreRecruitings.length);
+  console.log('========================');
 
   // 承認ミューテーション（recruiting用）
   const approveRecruitingMutation = useMutation({
@@ -155,48 +196,28 @@ export default function InboxPage() {
   if (viewMode === 'menu') {
     return (
       <div className="space-y-6">
-        {/* ヘッダー */}
-        <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">
-            地域シフト調整
-          </h3>
-          <p className="text-sm text-gray-600 mt-1">
-            近隣店舗との人員調整を行います（3秒ごと自動更新）
-          </p>
+        {/* 更新ボタン */}
+        <div className="flex justify-end">
+          <button
+            onClick={() => refetchPublishings()}
+            disabled={publishingsLoading}
+            className="flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <ArrowPathIcon className={`w-4 h-4 mr-2 ${publishingsLoading ? 'animate-spin' : ''}`} />
+            更新
+          </button>
         </div>
 
         {/* 2つの大きいカード */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* 近隣店を応援する（他店に派遣の青色） */}
-          <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
-            <div className="flex items-center mb-4">
-              <div className="w-4 h-4 bg-blue-500 rounded mr-3"></div>
-              <h4 className="text-lg font-medium text-gray-900">近隣店を応援する</h4>
-            </div>
-            <p className="text-gray-600 mb-4">
-              他店舗の人員不足を手伝います
-            </p>
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-blue-600 font-medium">
-                {otherStoreRecruitings.length}件の募集があります
-              </div>
-              <button
-                onClick={() => setViewMode('help-others')}
-                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
-              >
-                一覧を見る →
-              </button>
-            </div>
-          </div>
-
-          {/* 応援をお願いする（人員募集の赤色） */}
+          {/* 応援をお願いする（赤色） */}
           <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
             <div className="flex items-center mb-4">
               <div className="w-4 h-4 bg-red-500 rounded mr-3"></div>
               <h4 className="text-lg font-medium text-gray-900">応援をお願いする</h4>
             </div>
             <p className="text-gray-600 mb-4">
-              他店舗のスタッフに応援をお願いします
+              近隣の店のスタッフに来てもらう
             </p>
             <div className="flex items-center justify-between">
               <div className="text-sm text-red-600 font-medium">
@@ -210,12 +231,34 @@ export default function InboxPage() {
               </button>
             </div>
           </div>
+
+          {/* 応援する（青色） */}
+          <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
+            <div className="flex items-center mb-4">
+              <div className="w-4 h-4 bg-blue-500 rounded mr-3"></div>
+              <h4 className="text-lg font-medium text-gray-900">応援する</h4>
+            </div>
+            <p className="text-gray-600 mb-4">
+              近隣の店にスタッフを派遣する
+            </p>
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-blue-600 font-medium">
+                {otherStoreRecruitings.length}件の募集にリクエストがあります
+              </div>
+              <button
+                onClick={() => setViewMode('help-others')}
+                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+              >
+                一覧を見る →
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
-  // 近隣店を応援する（募集一覧）
+  // 応援する（自店舗の募集に対する応援リクエスト）
   if (viewMode === 'help-others') {
     return (
       <div className="space-y-6">
@@ -225,27 +268,37 @@ export default function InboxPage() {
             <div>
               <h3 className="text-lg font-medium text-gray-900 flex items-center">
                 <div className="w-4 h-4 bg-blue-500 rounded mr-3"></div>
-                近隣店を応援する
+                応援する
               </h3>
               <p className="text-sm text-gray-600 mt-1">
-                他店舗の人員募集一覧（{otherStoreRecruitings.length}件）
+                近隣の店にスタッフを派遣する（{otherStoreRecruitings.length}件）
               </p>
             </div>
-            <button
-              onClick={() => setViewMode('menu')}
-              className="text-gray-600 hover:text-gray-900 text-sm font-medium"
-            >
-              ← 戻る
-            </button>
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => refetchPublishings()}
+                disabled={publishingsLoading}
+                className="flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ArrowPathIcon className={`w-4 h-4 mr-2 ${publishingsLoading ? 'animate-spin' : ''}`} />
+                更新
+              </button>
+              <button
+                onClick={() => setViewMode('menu')}
+                className="text-gray-600 hover:text-gray-900 text-sm font-medium"
+              >
+                ← 戻る
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* 募集一覧 */}
+        {/* 応援リクエスト一覧 */}
         <div className="space-y-4">
           {otherStoreRecruitings.length === 0 ? (
             <div className="text-center py-12">
-              <div className="text-gray-400 text-2xl mb-2">🔍</div>
-              <p className="text-gray-600">現在募集中の案件はありません</p>
+              <div className="text-gray-400 text-2xl mb-2">📭</div>
+              <p className="text-gray-600">現在応援できるリクエストはありません</p>
             </div>
           ) : (
             otherStoreRecruitings.map((recruiting) => (
@@ -260,13 +313,16 @@ export default function InboxPage() {
                       {recruiting.start}–{recruiting.end}
                     </div>
                     <div className="text-lg font-medium text-gray-700">
-                      {getStoreName(recruiting.storeId)} / {ROLE_LABELS[recruiting.role]}
+                      {ROLE_LABELS[recruiting.role]} 募集
                     </div>
                     {recruiting.message && (
                       <div className="text-sm text-gray-600 mt-1">
                         {recruiting.message}
                       </div>
                     )}
+                    <div className="text-xs text-gray-500 mt-2">
+                      📞 他店舗からの応援リクエストが届いています
+                    </div>
                   </div>
 
                   {/* 右側ボタン */}
@@ -274,7 +330,7 @@ export default function InboxPage() {
                     <button
                       onClick={() => approveRecruitingMutation.mutate(recruiting)}
                       disabled={approveRecruitingMutation.isPending || rejectRecruitingMutation.isPending}
-                      className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                      className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
                     >
                       承認
                     </button>
@@ -318,15 +374,25 @@ export default function InboxPage() {
                 応援をお願いする
               </h3>
               <p className="text-sm text-gray-600 mt-1">
-                派遣可能な人材一覧（{otherStoreAvailables.length}名）
+                近隣の店のスタッフに来てもらう（{otherStoreAvailables.length}名）
               </p>
             </div>
-            <button
-              onClick={() => setViewMode('menu')}
-              className="text-gray-600 hover:text-gray-900 text-sm font-medium"
-            >
-              ← 戻る
-            </button>
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => refetchPublishings()}
+                disabled={publishingsLoading}
+                className="flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ArrowPathIcon className={`w-4 h-4 mr-2 ${publishingsLoading ? 'animate-spin' : ''}`} />
+                更新
+              </button>
+              <button
+                onClick={() => setViewMode('menu')}
+                className="text-gray-600 hover:text-gray-900 text-sm font-medium"
+              >
+                ← 戻る
+              </button>
+            </div>
           </div>
         </div>
 
@@ -335,7 +401,7 @@ export default function InboxPage() {
           {otherStoreAvailables.length === 0 ? (
             <div className="text-center py-12">
               <div className="text-gray-400 text-2xl mb-2">👥</div>
-              <p className="text-gray-600">現在派遣可能な人材はいません</p>
+              <p className="text-gray-600">現在応援可能な人材はいません</p>
             </div>
           ) : (
             otherStoreAvailables.map((available) => {

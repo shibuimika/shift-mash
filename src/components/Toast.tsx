@@ -52,31 +52,33 @@ export function Toast({ toast, onClose }: ToastProps) {
     >
       <div
         className={cn(
-          'max-w-sm w-full shadow-lg rounded-lg border pointer-events-auto ring-1 ring-black ring-opacity-5 overflow-hidden',
+          'max-w-md w-full shadow-lg rounded-lg border pointer-events-auto ring-1 ring-black ring-opacity-5 overflow-hidden',
           toastStyles[toast.type]
         )}
       >
-        <div className="p-4">
-          <div className="flex items-start">
+        <div className="p-3">
+          <div className="flex items-center">
             <div className="flex-shrink-0">
               <Icon 
-                className={cn('h-6 w-6 shrink-0', iconStyles[toast.type])} 
+                className={cn('h-5 w-5 shrink-0', iconStyles[toast.type])} 
                 aria-hidden="true" 
               />
             </div>
-            <div className="ml-3 w-0 flex-1 pt-0.5">
-              <p className="text-sm font-medium">{toast.title}</p>
-              <p className="mt-1 text-sm opacity-90">{toast.message}</p>
-            </div>
-            <div className="ml-4 flex-shrink-0 flex">
-              <button
-                className="inline-flex text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                onClick={onClose}
-                type="button"
-              >
-                <span className="sr-only">閉じる</span>
-                <XMarkIcon className="h-5 w-5 shrink-0" aria-hidden="true" />
-              </button>
+            <div className="ml-3 flex-1">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">{toast.title}</p>
+                  <p className="text-xs opacity-90">{toast.message}</p>
+                </div>
+                <button
+                  className="ml-4 inline-flex text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  onClick={onClose}
+                  type="button"
+                >
+                  <span className="sr-only">閉じる</span>
+                  <XMarkIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                </button>
+              </div>
             </div>
           </div>
         </div>

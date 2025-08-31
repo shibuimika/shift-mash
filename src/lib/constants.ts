@@ -74,7 +74,7 @@ export const ROUTES = {
 
 export const PAGE_TITLES: Record<string, string> = {
   [ROUTES.DAY]: '当日シフト',
-  [ROUTES.INBOX]: '受信リクエスト',
+  [ROUTES.INBOX]: '地域間調整',
 };
 
 // 時間設定

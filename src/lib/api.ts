@@ -75,7 +75,16 @@ class MockAPI {
   // 公開情報取得
   async getPublishings(): Promise<ApiResponse<Publishing>> {
     try {
+      // まずlocalStorageから取得を試行
+      const localData = this.getLocalData<Publishing>('publishings', null);
+      if (localData) {
+        console.log('📦 localStorageからpublishingsを取得:', localData);
+        return { data: localData, success: true };
+      }
+      
+      // localStorageにデータがない場合はJSONファイルから取得
       const data = await this.fetchJSON<Publishing>('publishings.json');
+      console.log('📁 JSONファイルからpublishingsを取得:', data);
       return { data, success: true };
     } catch (error) {
       return {
@@ -212,6 +221,161 @@ class MockAPI {
         message: error instanceof Error ? error.message : '公開情報の更新に失敗しました',
       };
     }
+  }
+
+  // デモデータ生成：公開した募集にマッチする派遣可能人材を生成
+  async generateDemoAvailablesForRecruiting(recruitingId: string): Promise<ApiResponse<Available[]>> {
+    try {
+      const publishings = this.getLocalData<Publishing>('publishings', { recruitings: [], availables: [] });
+      const recruiting = publishings.recruitings.find(r => r.id === recruitingId);
+      
+      if (!recruiting) {
+        console.warn('募集情報が見つかりません:', recruitingId);
+        return { data: [], success: true, message: '募集情報が見つかりません' };
+      }
+
+      // 時間・役割がマッチする派遣可能人材を生成（他店舗の余剰スタッフ）
+      const demoAvailables: Available[] = [
+        {
+          id: `demo_a_${recruiting.role}_${recruiting.start.replace(':', '')}_${Date.now()}`,
+          storeId: 's2', // 大宮店
+          workerId: 'w5',
+          shiftId: `sh_demo_${Date.now()}`,
+          role: recruiting.role, // 同じ役割
+          start: recruiting.start, // 同じ時間
+          end: recruiting.end, // 同じ時間
+          date: recruiting.date, // 同じ日付
+          open: true,
+          createdAt: Date.now(),
+          message: `${this.getRoleLabel(recruiting.role)}で余剰があります。応援可能です。`,
+          matchedFromRecruitingId: recruiting.id // マッチング元の募集ID
+        },
+        {
+          id: `demo_a_${recruiting.role}_${recruiting.start.replace(':', '')}_${Date.now() + 1}`,
+          storeId: 's3', // 川越店
+          workerId: 'w6',
+          shiftId: `sh_demo_${Date.now() + 1}`,
+          role: recruiting.role, // 同じ役割
+          start: recruiting.start, // 同じ時間
+          end: recruiting.end, // 同じ時間
+          date: recruiting.date, // 同じ日付
+          open: true,
+          createdAt: Date.now() + 1000,
+          message: `${this.getRoleLabel(recruiting.role)}スタッフが余裕があります。`,
+          matchedFromRecruitingId: recruiting.id // マッチング元の募集ID
+        }
+      ];
+
+      // 既存のavailablesに追加（重複を避ける）
+      const existingIds = new Set(publishings.availables.map(a => a.id));
+      const newAvailables = demoAvailables.filter(a => !existingIds.has(a.id));
+      
+      const updatedPublishings = {
+        ...publishings,
+        availables: [...publishings.availables, ...newAvailables]
+      };
+
+      this.setLocalData('publishings', updatedPublishings);
+      console.log('publishings.jsonに追加されたavailables:', newAvailables);
+      
+      // 保存後のデータを確認
+      const savedData = this.getLocalData<Publishing>('publishings', { recruitings: [], availables: [] });
+      console.log('保存後のpublishings全体:', savedData);
+
+      console.log('🔴 赤色ボタン（人員募集）用のデモデータ生成完了:');
+      console.log('  - 元の募集:', recruiting);
+      console.log('  - 生成された派遣可能人材:', newAvailables);
+      return { data: newAvailables, success: true };
+    } catch (error) {
+      console.error('デモデータ生成エラー:', error);
+      return {
+        data: [],
+        success: false,
+        message: error instanceof Error ? error.message : 'デモデータの生成に失敗しました',
+      };
+    }
+  }
+
+  // デモデータ生成：公開した派遣可能にマッチする募集を生成
+  async generateDemoRecruitingsForAvailable(availableId: string): Promise<ApiResponse<Recruiting[]>> {
+    try {
+      const publishings = this.getLocalData<Publishing>('publishings', { recruitings: [], availables: [] });
+      const available = publishings.availables.find(a => a.id === availableId);
+      
+      if (!available) {
+        console.warn('派遣可能情報が見つかりません:', availableId);
+        return { data: [], success: true, message: '派遣可能情報が見つかりません' };
+      }
+
+      // 時間・役割がマッチする募集を生成（他店舗の人員募集）
+      const demoRecruitings: Recruiting[] = [
+        {
+          id: `demo_r_${available.role}_${available.start.replace(':', '')}_${Date.now()}`,
+          storeId: 's2', // 大宮店
+          shiftId: `sh_demo_${Date.now()}`,
+          role: available.role, // 同じ役割
+          start: available.start, // 同じ時間
+          end: available.end, // 同じ時間
+          date: available.date, // 同じ日付
+          open: true,
+          createdAt: Date.now(),
+          message: `${this.getRoleLabel(available.role)}スタッフが不足しています。応援をお願いします。`,
+          matchedFromAvailableId: available.id // マッチング元の派遣可能ID
+        },
+        {
+          id: `demo_r_${available.role}_${available.start.replace(':', '')}_${Date.now() + 1}`,
+          storeId: 's3', // 川越店
+          shiftId: `sh_demo_${Date.now() + 1}`,
+          role: available.role, // 同じ役割
+          start: available.start, // 同じ時間
+          end: available.end, // 同じ時間
+          date: available.date, // 同じ日付
+          open: true,
+          createdAt: Date.now() + 1000,
+          message: `${this.getRoleLabel(available.role)}で人手不足です。派遣をお願いします。`,
+          matchedFromAvailableId: available.id // マッチング元の派遣可能ID
+        }
+      ];
+
+      // 既存のrecruitingsに追加（重複を避ける）
+      const existingIds = new Set(publishings.recruitings.map(r => r.id));
+      const newRecruitings = demoRecruitings.filter(r => !existingIds.has(r.id));
+      
+      const updatedPublishings = {
+        ...publishings,
+        recruitings: [...publishings.recruitings, ...newRecruitings]
+      };
+
+      this.setLocalData('publishings', updatedPublishings);
+      console.log('publishings.jsonに追加されたrecruitings:', newRecruitings);
+      
+      // 保存後のデータを確認
+      const savedData = this.getLocalData<Publishing>('publishings', { recruitings: [], availables: [] });
+      console.log('保存後のpublishings全体:', savedData);
+
+      console.log('🔵 青色ボタン（他店に派遣）用のデモデータ生成完了:');
+      console.log('  - 元の派遣可能:', available);
+      console.log('  - 生成された募集:', newRecruitings);
+      return { data: newRecruitings, success: true };
+    } catch (error) {
+      console.error('デモデータ生成エラー:', error);
+      return {
+        data: [],
+        success: false,
+        message: error instanceof Error ? error.message : 'デモデータの生成に失敗しました',
+      };
+    }
+  }
+
+  // 役割ラベルを取得するヘルパーメソッド
+  private getRoleLabel(role: string): string {
+    const roleLabels: Record<string, string> = {
+      'hall': 'ホール',
+      'kitchen': 'キッチン',
+      'cashier': 'レジ',
+      'support': '応援スタッフ',
+    };
+    return roleLabels[role] || role;
   }
 
   // 先着制御のためのロック機構

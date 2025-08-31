@@ -410,7 +410,7 @@ export default function DayShiftPage() {
               const staffEntries = Object.entries(staffShifts);
               let roleHeaderShown = false;
               
-              return staffEntries.map(([workerId]) => {
+              return staffEntries.map(([workerId], staffIndex, staffArray) => {
                 let worker = workers.find(w => w.id === workerId);
                 const isFirstInRole = !roleHeaderShown;
                 if (isFirstInRole) roleHeaderShown = true;
@@ -440,7 +440,7 @@ export default function DayShiftPage() {
                 }
                 
                 return (
-                  <div key={`${role}-${workerId}`} className="h-20 border-b border-gray-100 flex">
+                  <div key={`${role}-${workerId}`} className="h-20 flex relative">
                     {/* 役割ラベル（最初のスタッフのみ） */}
                     {isFirstInRole && (
                       <div className={`w-12 md:w-16 ${bgColor} border-r ${borderColor} p-1 flex items-center justify-center`}>
@@ -469,6 +469,17 @@ export default function DayShiftPage() {
                         </button>
                       )}
                     </div>
+                    
+                    {/* 下端の境界線 */}
+                    <div 
+                      className="absolute bg-gray-100"
+                      style={{
+                        bottom: '0px',
+                        left: '0px',
+                        width: '100%',
+                        height: '1px',
+                      }}
+                    ></div>
                   </div>
                 );
               });
@@ -501,6 +512,23 @@ export default function DayShiftPage() {
                 {generateVerticalGridLines()}
               </div>
 
+              {/* 横グリッド線（各行の境界線） */}
+              {Array.from({ length: Object.values(shiftsByRoleAndStaff).reduce(
+                (total, staffShifts) => total + Object.keys(staffShifts).length, 
+                0
+              ) }, (_, index) => (
+                <div
+                  key={`row-line-${index}`}
+                  className="absolute bg-gray-100"
+                  style={{
+                    top: `${(index + 1) * 80 - 1}px`, // 各行の下端に境界線を配置
+                    left: '0px',
+                    width: `${timelineConfig.totalWidth}px`, // タイムラインの実際の幅を使用
+                    height: '1px',
+                  }}
+                />
+              ))}
+
               {/* シフトバー */}
               {Object.entries(shiftsByRoleAndStaff).map(([role, staffShifts], roleIndex) => {
                 const staffEntries = Object.entries(staffShifts);
@@ -519,7 +547,7 @@ export default function DayShiftPage() {
                   return (
                     <div
                       key={`${role}-${workerId}-bar`}
-                      className="absolute w-full border-b border-gray-100"
+                      className="absolute w-full"
                       style={{
                         top: `${absoluteRowIndex * 80}px`, // h-20 = 80px
                         height: '80px',

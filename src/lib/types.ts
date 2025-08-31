@@ -70,6 +70,7 @@ export interface Recruiting {
   open: boolean;
   createdAt: number;
   message: string;
+  matchedFromAvailableId?: string; // マッチング元の派遣可能ID（デモデータ用）
 }
 
 // 派遣可能情報
@@ -85,6 +86,7 @@ export interface Available {
   open: boolean;
   createdAt: number;
   message: string;
+  matchedFromRecruitingId?: string; // マッチング元の募集ID（デモデータ用）
 }
 
 // 公開エンティティ

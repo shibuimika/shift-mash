@@ -32,6 +32,8 @@ export function PublishConfirmModal({ isOpen, onClose, shift, type }: PublishCon
       const currentPublishings = await api.getPublishings();
       const publishings = currentPublishings.data || { recruitings: [], availables: [] };
 
+      let newItemId = '';
+
       if (isRecruiting) {
         // 人員募集を追加
         const newRecruiting = {
@@ -47,6 +49,7 @@ export function PublishConfirmModal({ isOpen, onClose, shift, type }: PublishCon
           message: `${shift.start}-${shift.end}の${ROLE_LABELS[shift.role]}スタッフを募集しています`,
         };
         publishings.recruitings.push(newRecruiting);
+        newItemId = newRecruiting.id;
       } else {
         // 派遣可能を追加
         const newAvailable = {
@@ -63,18 +66,48 @@ export function PublishConfirmModal({ isOpen, onClose, shift, type }: PublishCon
           message: `${shift.start}-${shift.end}の${ROLE_LABELS[shift.role]}で他店応援可能です`,
         };
         publishings.availables.push(newAvailable);
+        newItemId = newAvailable.id;
       }
 
-      return api.updatePublishing(publishings);
+      const result = await api.updatePublishing(publishings);
+      
+      // デモデータを生成（公開処理の一部として同期的に実行）
+      if (isRecruiting) {
+        // 人員募集の場合、マッチする派遣可能人材を生成
+        const demoResult = await api.generateDemoAvailablesForRecruiting(newItemId);
+        console.log('デモデータ生成結果（派遣可能人材）:', demoResult);
+        if (demoResult.success) {
+          console.log('✅ 赤色ボタン用デモデータ生成成功:', demoResult.data);
+        } else {
+          console.warn('デモデータ生成に失敗:', demoResult.message);
+        }
+      } else {
+        // 派遣可能の場合、マッチする募集を生成
+        const demoResult = await api.generateDemoRecruitingsForAvailable(newItemId);
+        console.log('デモデータ生成結果（募集）:', demoResult);
+        if (demoResult.success) {
+          console.log('✅ 青色ボタン用デモデータ生成成功:', demoResult.data);
+        } else {
+          console.warn('デモデータ生成に失敗:', demoResult.message);
+        }
+      }
+      
+      return result;
     },
     onSuccess: () => {
       showToast('success', '公開完了', isRecruiting ? '人員募集を公開しました' : '派遣可能として公開しました');
+      // データを再取得してからページ遷移
       queryClient.invalidateQueries({ queryKey: queryKeys.publishings });
       onClose();
-      // /inboxページに遷移
-      navigate(ROUTES.INBOX);
+      
+      // 少し遅延してからページ遷移（データ更新を確実にするため）
+      setTimeout(() => {
+        console.log('📱 /inboxページに遷移します');
+        navigate(ROUTES.INBOX);
+      }, 500);
     },
-    onError: () => {
+    onError: (error) => {
+      console.error('公開処理エラー:', error);
       showToast('error', 'エラー', '公開処理に失敗しました');
     },
   });

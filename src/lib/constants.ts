@@ -11,6 +11,7 @@ export const ROLE_LABELS: Record<string, string> = {
   [ROLES.HALL]: 'ホール',
   [ROLES.KITCHEN]: 'キッチン',
   [ROLES.CASHIER]: 'レジ',
+  'support': '応援スタッフ',
 };
 
 // シフトステータス

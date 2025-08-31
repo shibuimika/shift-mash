@@ -2,7 +2,7 @@
   {
     "id": "sh1s1h1",
     "storeId": "s1",
-    "workerId": null,
+    "workerId": "w1",
     "role": "hall",
     "start": "09:00",
     "end": "12:00",
@@ -50,7 +50,7 @@
   {
     "id": "sh1s1k2",
     "storeId": "s1",
-    "workerId": null,
+    "workerId": "w1k2",
     "role": "kitchen",
     "start": "16:00",
     "end": "20:00",

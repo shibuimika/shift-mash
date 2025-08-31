@@ -1,21 +1,29 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api, queryKeys } from '@/lib/api';
 import { PublishConfirmModal } from '@/components/PublishConfirmModal';
+import { AddSupportStaffModal } from '@/components/AddSupportStaffModal';
 // import { useToast } from '@/components/ToastProvider';
 import type { Shift, Worker, RequestType } from '@/lib/types';
 import { formatDate, timeToMinutes } from '@/lib/utils';
 import { ROLE_LABELS } from '@/lib/constants';
+import { PlusIcon } from '@heroicons/react/24/outline';
 
 export default function DayShiftPage() {
   // const { showToast } = useToast();
   const [confirmModalData, setConfirmModalData] = useState<{ shift: Shift; type: RequestType } | null>(null);
+  const [showAddSupportStaffModal, setShowAddSupportStaffModal] = useState(false);
+  const [supportStaffs, setSupportStaffs] = useState<Array<{ id: string; name: string; start: string; end: string }>>([]);
   const [isMobile, setIsMobile] = useState(false);
+  
+  // スクロール同期用のref
+  const headerScrollRef = useRef<HTMLDivElement>(null);
+  const bodyScrollRef = useRef<HTMLDivElement>(null);
 
   // レスポンシブ判定
   useEffect(() => {
     const handleResize = () => {
-      setIsMobile(window.innerWidth < 640);
+      setIsMobile(window.innerWidth < 768); // md breakpoint
     };
     
     handleResize(); // 初期値設定
@@ -55,38 +63,53 @@ export default function DayShiftPage() {
 
   // タイムライン設定の計算
   const timelineConfig = useMemo(() => {
+    const cellWidth = isMobile ? 100 : 150; // セル幅を増加（ボタンが収まるように）
+    
     if (shifts.length === 0) {
-      const durationHours = 9;
+      const startHour = 9;
+      const endHour = 18;
+      const hourCount = endHour - startHour;
       return {
         startTime: '09:00',
         endTime: '18:00',
         startMinutes: 540,
         endMinutes: 1080,
         totalMinutes: 540,
-        totalWidth: isMobile ? durationHours * 56 : '100%',
-        durationHours,
+        totalWidth: hourCount * cellWidth,
+        cellWidth,
+        hourCount,
+        startHour,
+        endHour,
       };
     }
     
     const startTimes = shifts.map(s => timeToMinutes(s.start));
     const endTimes = shifts.map(s => timeToMinutes(s.end));
     
-    const minStart = Math.min(...startTimes);
-    const maxEnd = Math.max(...endTimes);
+    const minStartHour = Math.floor(Math.min(...startTimes) / 60); // 時間単位で切り下げ
+    const maxEndHour = Math.ceil(Math.max(...endTimes) / 60); // 時間単位で切り上げ
     
-    // 余白なし、実際のmin-maxのみ
+    const minStart = minStartHour * 60;
+    const maxEnd = maxEndHour * 60;
     const totalMinutes = maxEnd - minStart;
-    const durationHours = totalMinutes / 60;
+    const hourCount = maxEndHour - minStartHour;
     
-    return {
-      startTime: `${Math.floor(minStart / 60).toString().padStart(2, '0')}:${(minStart % 60).toString().padStart(2, '0')}`,
-      endTime: `${Math.floor(maxEnd / 60).toString().padStart(2, '0')}:${(maxEnd % 60).toString().padStart(2, '0')}`,
+    const calculatedConfig = {
+      startTime: `${minStartHour.toString().padStart(2, '0')}:00`,
+      endTime: `${maxEndHour.toString().padStart(2, '0')}:00`,
       startMinutes: minStart,
       endMinutes: maxEnd,
       totalMinutes,
-      totalWidth: isMobile ? durationHours * 56 : '100%', // モバイル：56px/h、デスクトップ：等分
-      durationHours,
+      totalWidth: hourCount * cellWidth,
+      cellWidth,
+      hourCount,
+      startHour: minStartHour,
+      endHour: maxEndHour,
     };
+    
+
+    
+    return calculatedConfig;
   }, [shifts, isMobile]);
 
   // 役割別でグループ化し、各役割内でスタッフ別に整理
@@ -96,29 +119,73 @@ export default function DayShiftPage() {
     // 自店舗のスタッフのみ取得
     const currentStoreWorkers = workers.filter(w => w.storeId === currentStoreId);
     
-    // 役割ごとにスタッフを分類
-    const roles = ['hall', 'kitchen'];
+    // 役割ごとにスタッフを分類（応援スタッフを追加）
+    const roles = ['hall', 'kitchen', 'support'];
     
     roles.forEach(role => {
       result[role] = {};
       
-      // その役割のスタッフを取得
-      const roleWorkers = currentStoreWorkers.filter(w => w.roles.includes(role));
-      
-      roleWorkers.forEach(worker => {
-        // そのスタッフのシフトを取得
-        const workerShifts = shifts.filter(s => 
-          s.role === role && (s.workerId === worker.id || s.workerId === null)
-        );
-        
-        if (workerShifts.length > 0) {
-          result[role][worker.id] = workerShifts;
+      if (role === 'support') {
+        // 応援スタッフ枠（他店からの応援者）
+        const supportShifts = shifts.filter(s => s.supportWorkerId);
+        if (supportShifts.length > 0) {
+          // 応援者ごとにグループ化
+          supportShifts.forEach(shift => {
+            const supportWorkerId = shift.supportWorkerId!;
+            const supportWorker = workers.find(w => w.id === supportWorkerId);
+            if (supportWorker) {
+              if (!result[role][supportWorkerId]) {
+                result[role][supportWorkerId] = [];
+              }
+              result[role][supportWorkerId].push(shift);
+            }
+          });
         }
-      });
+        
+        // 追加された応援スタッフを含める
+        supportStaffs.forEach(staff => {
+          const mockShift: Shift = {
+            id: `support-${staff.id}`,
+            storeId: currentStoreId,
+            workerId: `support-${staff.id}`,
+            role: 'support',
+            start: staff.start,
+            end: staff.end,
+            status: 'normal',
+            date: today,
+            supportWorkerId: `support-${staff.id}`,
+            notes: `応援スタッフ: ${staff.name}`,
+          };
+          
+          if (!result[role][`support-${staff.id}`]) {
+            result[role][`support-${staff.id}`] = [];
+          }
+          result[role][`support-${staff.id}`].push(mockShift);
+        });
+        
+        // 応援スタッフがいない場合でも空の枠を表示
+        if (Object.keys(result[role]).length === 0) {
+          result[role]['empty'] = [];
+        }
+      } else {
+        // 通常の役割のスタッフを取得
+        const roleWorkers = currentStoreWorkers.filter(w => w.roles.includes(role));
+        
+        roleWorkers.forEach(worker => {
+          // そのスタッフのシフトを取得（応援勤務は除く）
+          const workerShifts = shifts.filter(s => 
+            s.role === role && (s.workerId === worker.id || s.workerId === null) && !s.supportWorkerId
+          );
+          
+          if (workerShifts.length > 0) {
+            result[role][worker.id] = workerShifts;
+          }
+        });
+      }
     });
     
     return result;
-  }, [shifts, workers, currentStoreId]);
+  }, [shifts, workers, currentStoreId, supportStaffs, today]);
 
   const handleRequestSupport = (shift: Shift) => {
     setConfirmModalData({
@@ -138,58 +205,82 @@ export default function DayShiftPage() {
     setConfirmModalData(null);
   };
 
+  const handleAddSupportStaff = (staffData: { name: string; startTime: string; endTime: string }) => {
+    const newStaff = {
+      id: `staff-${Date.now()}`,
+      name: staffData.name,
+      start: staffData.startTime,
+      end: staffData.endTime,
+    };
+    
+    setSupportStaffs(prev => [...prev, newStaff]);
+    setShowAddSupportStaffModal(false);
+  };
+
+  // スクロール同期関数
+  const syncScroll = (source: 'header' | 'body', scrollLeft: number) => {
+    if (source === 'header' && bodyScrollRef.current) {
+      bodyScrollRef.current.scrollLeft = scrollLeft;
+    } else if (source === 'body' && headerScrollRef.current) {
+      headerScrollRef.current.scrollLeft = scrollLeft;
+    }
+  };
+
   // シフトバーの位置とサイズを計算
   const getShiftBarStyle = (shift: Shift) => {
     const startMinutes = timeToMinutes(shift.start);
     const endMinutes = timeToMinutes(shift.end);
     const duration = endMinutes - startMinutes;
     
-    if (isMobile) {
-      // モバイル：ピクセル指定（56px/h）
-      const left = ((startMinutes - timelineConfig.startMinutes) / 60) * 56;
-      const width = (duration / 60) * 56;
-      return {
-        left: `${left}px`,
-        width: `${width}px`,
-      };
-    } else {
-      // デスクトップ：パーセント指定（等分）
-      const leftPercent = ((startMinutes - timelineConfig.startMinutes) / timelineConfig.totalMinutes) * 100;
-      const widthPercent = (duration / timelineConfig.totalMinutes) * 100;
-      return {
-        left: `${leftPercent}%`,
-        width: `${widthPercent}%`,
-      };
-    }
+    // 時間軸上での位置を計算（時間単位で正確に）
+    const startHourFloat = startMinutes / 60; // 開始時刻（小数点含む）
+    const durationHours = duration / 60; // 期間（小数点含む）
+    const offsetFromStart = startHourFloat - timelineConfig.startHour; // 開始時刻からのオフセット
+    
+    const left = offsetFromStart * timelineConfig.cellWidth;
+    const width = durationHours * timelineConfig.cellWidth;
+    
+    return {
+      left: `${left}px`,
+      width: `${width}px`,
+    };
   };
 
-  // 時間軸の時刻表示を生成（ヘッダー用）
-  const generateTimeMarkers = (isHeader = false) => {
+  // 時間軸の時刻表示を生成
+  const generateTimeMarkers = () => {
     const markers = [];
-    const startHour = Math.floor(timelineConfig.startMinutes / 60);
-    const endHour = Math.ceil(timelineConfig.endMinutes / 60);
+    const { startHour, endHour, cellWidth } = timelineConfig;
     
+    // startHourからendHourまでの時刻を表示（endHourも含む）
     for (let hour = startHour; hour <= endHour; hour++) {
-      const leftPercent = ((hour * 60 - timelineConfig.startMinutes) / timelineConfig.totalMinutes) * 100;
-      const leftPx = isMobile ? ((hour * 60 - timelineConfig.startMinutes) / 60) * 56 : undefined;
+      const hourIndex = hour - startHour;
+      const leftPx = hourIndex * cellWidth;
       
       markers.push(
         <div
           key={hour}
-          className="absolute top-0 h-full border-l border-gray-200"
-          style={{ 
-            left: isMobile ? `${leftPx}px` : `${leftPercent}%` 
-          }}
+          className="absolute h-full border-l border-gray-200 flex items-start justify-center"
+          style={{ left: `${leftPx}px`, width: `${cellWidth}px` }}
         >
-          {isHeader && (
-            <div className="absolute -top-1 -left-3 text-xs text-gray-500 font-medium bg-white px-1">
-              {hour}
-            </div>
-          )}
+          <span className="text-xs font-medium text-gray-600 bg-white px-1 mt-1">
+            {hour.toString().padStart(2, '0')}:00
+          </span>
         </div>
       );
     }
     return markers;
+  };
+
+  // 縦グリッド線を生成
+  const generateVerticalGridLines = () => {
+    const { hourCount, cellWidth } = timelineConfig;
+    return Array.from({ length: hourCount + 1 }, (_, i) => (
+      <div
+        key={i}
+        className="absolute top-0 h-full border-l border-gray-200"
+        style={{ left: `${i * cellWidth}px` }}
+      />
+    ));
   };
 
   // ガントチャート用シフトバーコンポーネント
@@ -206,15 +297,17 @@ export default function DayShiftPage() {
 
     return (
       <div
-        className={`absolute h-10 border-2 rounded p-1 cursor-pointer transition-all hover:shadow-md ${getBarColor()}`}
+        className={`absolute border-2 rounded cursor-pointer transition-all hover:shadow-md z-10 ${getBarColor()}`}
         style={{
           ...style,
-          top: '8px', // 行の中央に配置
+          top: '32px', // ボタンスペースを確保
+          height: '32px', // バー自体は狭く
+          padding: '2px 6px',
         }}
       >
-        {/* 上部ボタン */}
+        {/* 上部ボタン（行内に配置） */}
         {(isShortage || isSurplus) && (
-          <div className="absolute -top-3 left-2 right-2 flex justify-center">
+          <div className="absolute -top-7 left-0 right-0 flex justify-center">
             {isShortage && (
               <button
                 onClick={() => handleRequestSupport(shift)}
@@ -223,25 +316,25 @@ export default function DayShiftPage() {
                 人員募集
               </button>
             )}
-                               {isSurplus && (
-                     <button
-                       onClick={() => handleOfferDispatch(shift)}
-                       className="bg-blue-500 hover:bg-blue-600 text-white text-xs px-2 py-0.5 rounded shadow-sm transition-colors whitespace-nowrap"
-                     >
-                       他店に派遣
-                     </button>
-                   )}
+            {isSurplus && (
+              <button
+                onClick={() => handleOfferDispatch(shift)}
+                className="bg-blue-500 hover:bg-blue-600 text-white text-xs px-2 py-0.5 rounded shadow-sm transition-colors whitespace-nowrap"
+              >
+                他店に派遣
+              </button>
+            )}
           </div>
         )}
 
-        {/* 時間のみ表示 */}
-        <div className="text-xs font-medium text-center">
+        {/* 時間表示 */}
+        <div className="text-xs font-medium text-center leading-tight">
           {shift.start}-{shift.end}
         </div>
         
         {/* 応援勤務インジケーター */}
         {shift.supportWorkerId && (
-          <div className="absolute top-0 right-0 w-2 h-2 bg-green-500 rounded-full"></div>
+          <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full border border-white"></div>
         )}
       </div>
     );
@@ -259,10 +352,10 @@ export default function DayShiftPage() {
   const currentStore = stores.find(store => store.id === currentStoreId);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6 w-full" style={{ maxWidth: 'none' }}>
       {/* ヘッダー */}
-      <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
-        <h3 className="text-xl font-bold text-gray-900 mb-2">
+      <div className="bg-white rounded-lg p-4 md:p-6 shadow-sm border border-gray-200">
+        <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-2">
           {currentStore?.name || '店舗'} - {formatDate(new Date().toISOString().split('T')[0])}
         </h3>
         <p className="text-sm text-gray-600">
@@ -271,73 +364,110 @@ export default function DayShiftPage() {
       </div>
 
       {/* ガントチャート */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-24 md:mb-6">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-20 md:mb-6" style={{ overflowX: 'visible' }}>
         {/* ヘッダー行（時間軸） */}
-        <div className="grid grid-cols-[180px_1fr] sm:grid-cols-[200px_1fr] border-b border-gray-200">
+        <div className="border-b border-gray-200 flex">
           {/* 左固定ヘッダー */}
-          <div className="bg-gray-50 border-r border-gray-200 p-2 sticky left-0 z-20">
-            <div className="text-xs sm:text-sm font-medium text-gray-700">役割 / スタッフ名</div>
+          <div className="bg-gray-50 border-r border-gray-200 sticky left-0 z-20 flex">
+            <div className="w-12 md:w-16 bg-blue-50 border-r border-blue-200 p-1 md:p-2 flex items-center justify-center">
+              <span className="text-xs font-medium text-blue-700 text-center">役割</span>
+            </div>
+            <div className="w-28 md:w-44 p-1 md:p-2 flex items-center">
+              <span className="text-xs font-medium text-gray-700">スタッフ名</span>
+            </div>
           </div>
           
           {/* 右側時間軸ヘッダー */}
-          <div className="bg-gray-50">
+          <div className="flex-1 bg-gray-50 overflow-hidden">
             <div 
-              className="relative h-10 overflow-x-auto" 
-              id="timeline-header"
+              className="relative h-12 overflow-x-auto scrollbar-hide" 
+              ref={headerScrollRef}
               onScroll={(e) => {
-                // ヘッダーのスクロールを本体と同期
                 const target = e.target as HTMLElement;
-                const bodyElement = document.getElementById('timeline-body');
-                if (bodyElement) {
-                  bodyElement.scrollLeft = target.scrollLeft;
-                }
+                syncScroll('header', target.scrollLeft);
               }}
             >
               <div
+                className="relative h-full"
                 style={{ 
-                  width: isMobile ? `${timelineConfig.totalWidth}px` : '100%',
-                  minWidth: isMobile ? `${timelineConfig.totalWidth}px` : 'auto'
+                  width: `${timelineConfig.totalWidth}px !important`,
+                  minWidth: `${timelineConfig.totalWidth}px !important`,
+                  maxWidth: 'none'
                 }}
               >
-                {/* 時間目盛り（ヘッダーのみ） */}
-                {generateTimeMarkers(true)}
+                {/* 時間目盛り */}
+                {generateTimeMarkers()}
               </div>
             </div>
           </div>
         </div>
 
         {/* スタッフ行 */}
-        <div className="grid grid-cols-[180px_1fr] sm:grid-cols-[200px_1fr]">
+        <div className="flex">
           {/* 左固定カラム */}
-          <div className="bg-white border-r border-gray-200 sticky left-0 z-10">
+          <div className="bg-white border-r border-gray-200 sticky left-0 z-10 flex flex-col">
             {Object.entries(shiftsByRoleAndStaff).map(([role, staffShifts]) => {
               const staffEntries = Object.entries(staffShifts);
               let roleHeaderShown = false;
               
               return staffEntries.map(([workerId]) => {
-                const worker = workers.find(w => w.id === workerId);
+                let worker = workers.find(w => w.id === workerId);
                 const isFirstInRole = !roleHeaderShown;
                 if (isFirstInRole) roleHeaderShown = true;
                 
+                // 応援スタッフの場合の処理
+                let displayName = '未配属';
+                let bgColor = 'bg-blue-50';
+                let borderColor = 'border-blue-200';
+                let textColor = 'text-blue-700';
+                
+                if (role === 'support') {
+                  bgColor = 'bg-green-50';
+                  borderColor = 'border-green-200';
+                  textColor = 'text-green-700';
+                  
+                  if (workerId === 'empty') {
+                    displayName = '応援待ち';
+                  } else if (workerId.startsWith('support-')) {
+                    // 追加された応援スタッフ
+                    const staff = supportStaffs.find(s => `support-${s.id}` === workerId);
+                    displayName = staff ? `${staff.name} (応援)` : '応援スタッフ';
+                  } else if (worker) {
+                    displayName = `${worker.name} (${stores.find(s => s.id === worker.storeId)?.name || '他店'})`;
+                  }
+                } else {
+                  displayName = worker?.name || '未配属';
+                }
+                
                 return (
-                  <div key={`${role}-${workerId}`} className="h-14 border-b border-gray-100 flex">
+                  <div key={`${role}-${workerId}`} className="h-20 border-b border-gray-100 flex">
                     {/* 役割ラベル（最初のスタッフのみ） */}
                     {isFirstInRole && (
-                      <div className="w-12 sm:w-16 bg-blue-50 border-r border-blue-200 p-1 sm:p-2 flex items-center justify-center">
-                        <span className="text-xs font-medium text-blue-700 text-center">
+                      <div className={`w-12 md:w-16 ${bgColor} border-r ${borderColor} p-1 flex items-center justify-center`}>
+                        <span className={`text-xs font-medium ${textColor} text-center leading-tight`}>
                           {ROLE_LABELS[role] || role}
                         </span>
                       </div>
                     )}
                     {!isFirstInRole && (
-                      <div className="w-12 sm:w-16 border-r border-gray-100"></div>
+                      <div className="w-12 md:w-16 border-r border-gray-100"></div>
                     )}
                     
                     {/* スタッフ名 */}
-                    <div className="flex-1 p-1 sm:p-2 flex items-center">
-                      <span className="text-xs sm:text-sm font-medium text-gray-800 truncate">
-                        {worker?.name || '未配属'}
+                    <div className="w-28 md:w-44 p-1 md:p-2 flex items-center justify-between">
+                      <span className="text-xs font-medium text-gray-800 truncate">
+                        {displayName}
                       </span>
+                      {/* 応援待ちの場合は「＋」ボタンを表示 */}
+                      {role === 'support' && workerId === 'empty' && (
+                        <button
+                          onClick={() => setShowAddSupportStaffModal(true)}
+                          className="ml-2 w-6 h-6 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center transition-colors text-xs font-bold"
+                          title="応援スタッフを追加"
+                        >
+                          <PlusIcon className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 );
@@ -347,30 +477,29 @@ export default function DayShiftPage() {
 
           {/* 右側タイムライン */}
           <div 
-            className="overflow-x-auto"
-            id="timeline-body"
+            className="flex-1 overflow-x-auto scrollbar-hide"
+            ref={bodyScrollRef}
             onScroll={(e) => {
-              // 本体のスクロールをヘッダーと同期
               const target = e.target as HTMLElement;
-              const headerElement = document.getElementById('timeline-header');
-              if (headerElement) {
-                headerElement.scrollLeft = target.scrollLeft;
-              }
+              syncScroll('body', target.scrollLeft);
             }}
           >
             <div 
               className="relative"
               style={{ 
-                width: isMobile ? `${timelineConfig.totalWidth}px` : '100%',
-                minWidth: isMobile ? `${timelineConfig.totalWidth}px` : 'auto',
-                minHeight: `${Object.values(shiftsByRoleAndStaff).reduce(
+                width: `${timelineConfig.totalWidth}px !important`,
+                minWidth: `${timelineConfig.totalWidth}px !important`,
+                maxWidth: 'none',
+                height: `${Object.values(shiftsByRoleAndStaff).reduce(
                   (total, staffShifts) => total + Object.keys(staffShifts).length, 
                   0
-                ) * 56}px` // h-14 = 56px
+                ) * 80}px` // h-20 = 80px
               }}
             >
-              {/* 縦グリッド線（時刻ラベルなし） */}
-              {generateTimeMarkers(false)}
+              {/* 縦グリッド線 */}
+              <div className="absolute inset-0">
+                {generateVerticalGridLines()}
+              </div>
 
               {/* シフトバー */}
               {Object.entries(shiftsByRoleAndStaff).map(([role, staffShifts], roleIndex) => {
@@ -384,7 +513,7 @@ export default function DayShiftPage() {
                 );
                 
                 return staffEntries.map(([workerId, workerShifts], staffIndex) => {
-                  const worker = workers.find(w => w.id === workerId);
+                  let worker = workers.find(w => w.id === workerId);
                   const absoluteRowIndex = previousRowCount + staffIndex;
                   
                   return (
@@ -392,8 +521,8 @@ export default function DayShiftPage() {
                       key={`${role}-${workerId}-bar`}
                       className="absolute w-full border-b border-gray-100"
                       style={{
-                        top: `${absoluteRowIndex * 56}px`, // h-14 = 56px
-                        height: '56px',
+                        top: `${absoluteRowIndex * 80}px`, // h-20 = 80px
+                        height: '80px',
                       }}
                     >
                       {/* シフトバー */}
@@ -458,6 +587,13 @@ export default function DayShiftPage() {
           type={confirmModalData.type}
         />
       )}
+
+      {/* 応援スタッフ追加モーダル */}
+      <AddSupportStaffModal
+        isOpen={showAddSupportStaffModal}
+        onClose={() => setShowAddSupportStaffModal(false)}
+        onSubmit={handleAddSupportStaff}
+      />
     </div>
   );
 }
